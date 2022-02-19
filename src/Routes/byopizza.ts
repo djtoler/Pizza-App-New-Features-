@@ -2,6 +2,8 @@ import express from "express";
 const byopizza = express.Router();
 import Pizza from "../Models/pizza";
 
+
+
 class PizzaOrder implements Pizza {
     size: any[];
     toppings: any[];
@@ -15,7 +17,7 @@ class PizzaOrder implements Pizza {
     }
 }
 
-byopizza.get('/', (req, res) => {
+byopizza.get('/', (_req, res) => {
     res.render('byopizza')
 });
 

@@ -1,20 +1,20 @@
-import express, { request } from "express";
+const express = require('express');
+const http = require('http');
+const socketio = require('socket.io');
+
 import cors from "cors";
 import path from "path";
 import "dotenv/config";
+
 const mongoose = require("mongoose");
 const flash = require('connect-flash')
 const session = require('express-session');
 const passport = require('passport');
-import {Request} from 'express';
 
-// declare module "express" {
-//   export interface Request {
-//     user: any,
-//     flash: any,
-//     login: any
-//   }
-// }
+const formatMessage = require('./utils/messages');
+const {userJoin, getCurrentUser, userLeave, getRoomUsers} = require('./utils/users');
+
+
 
 import byopizza from "./Routes/byopizza";
 import byoPizzaCon from "./Routes/byoPizzaCon";
@@ -24,22 +24,24 @@ import liverPizza from "./Routes/liverPizza";
 import ramenPizza from "./Routes/ramenPizza";
 import review from "./Routes/review";
 import reviewCon from "./Routes/reviewCon";
-import Reviewer from "./Models/Reviewer";
+// import Reviewer from "./Models/reviewer";
 import dbindex from "./Routes/dbindex";
 import dbusers from "./Routes/dbusers";
 import dbdashboard from "./Routes/dbdashboard";
-// import dbmessages from "./Views/Partials/dbmessages";
+import chathome from "./Routes/chathome";
+
 
 
 
 
 
 const app = express();
+const server = http.createServer(app);
+const io = socketio(server);
 require('./Config/passport')(passport);
 
 // set up for the database access and use
-// const db  = process.env.Mongo_URI
-// connect to MongoDB
+
 mongoose
   .connect('mongodb+srv://djtoler:alphagpc@cluster0.rwafh.mongodb.net/todo?retryWrites=true&w=majority', { 
     useNewUrlParser: true,
@@ -57,6 +59,63 @@ app.set("partials", path.join(__dirname, "Views/Partials"));
 app.set("view engine", "hbs");
 app.use(express.static(path.join(__dirname, "Pulic")));
 
+const botName = "ChatCordBot";
+
+io.on('connection', (socket:any) => {
+  socket.on('joinRoom', ( {username, room}: {username:any, room:any} ) => {
+      // create a variable for a chat user
+      // userJoin is a function that creates a id, username & room for a user. Then
+      // pushes it into the empty users array and returns user.
+      const user = userJoin(socket.id, username, room);
+      // join user to whatever room they pick based on qs query string params
+      socket.join(user.room);
+
+      socket.emit('message', formatMessage(botName, "Welcome To Food Chat"));
+
+      // emmit to specific room that a new user has joined
+      socket.broadcast
+      .to(user.room)
+      .emit('message', formatMessage(botName, `${user.username} has joined the chat!`));
+
+      io.to(user.room).emit('roomUsers', {
+          room: user.room,
+          users: getRoomUsers(user.room)
+      });
+
+
+  });
+
+  console.log('new websocket connection');
+
+  // listen for chat message
+  socket.on('chatMessage', (msg: any) => {
+      const user = getCurrentUser(socket.id);
+  //users message shows up on screen 
+    io
+    .to(user.room)
+    .emit('message', formatMessage(user.username, msg));
+  });
+
+  socket.on('disconnect', () => {
+      const user = userLeave(socket.id);
+
+      if (user) {
+          io.to(user.room).emit('message', 
+              formatMessage(botName, `${user.username} has left the chat!`)
+          );
+
+          io.to(user.room).emit('roomUsers', 
+          {
+              room: user.room, 
+              users: getRoomUsers(user.room)
+          }
+          );
+      };
+      
+  });
+
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -72,7 +131,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
-app.use(function(req, res, next) {
+app.use(function(req:any, res:any, next:any) {
   res.locals.success_msg = req.flash('success_msg');
   res.locals.error_msg = req.flash('error_msg');
   res.locals.error = req.flash('error');
@@ -93,8 +152,9 @@ app.use("/reviewCon", reviewCon);
 app.use("/byopizza", byopizza);
 app.use("/byoPizzaCon", byoPizzaCon);
 app.use("/dbindex", dbindex);
-app.use("/dbusers", dbusers);
+app.use("/", dbusers);
 app.use("/dbdashboard", dbdashboard);
+app.use("/", chathome);
 // app.use("/dbmessages",  dbmessages)
 
 

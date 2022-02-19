@@ -1,20 +1,17 @@
 import express from "express";
 const dbdashboard = express.Router();
-// const {
-//   ensureAuthenticated,
-//   forwardAuthenticated,
-// } = require("../Config/dbauthenticate");
+const { ensureAuthenticated, forwardAuthenticated } = require('../config/dbauthenticate');
 
 // Welcome Page
-dbdashboard.get("/", (req, res) =>
+dbdashboard.get("/welcome", forwardAuthenticated, (req, res) =>
   res.render("dbwelcome")
 );
 
 // Dashboard
-// dbdashboard.get('/dbdashboard', ensureAuthenticated, (req, res) =>
-//   res.render('dbdashboard', {
-//     user: req.user
-//   })
-// );
+dbdashboard.get('/', ensureAuthenticated, (req, res) =>
+  res.render('dbdashboard', {
+    user: req.user
+  })
+);
 
 export default dbdashboard;

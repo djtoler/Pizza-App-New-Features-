@@ -1,5 +1,5 @@
 import express from "express";
-import Reviewer from "../Models/Reviewer";
+import Reviewer from "../Models/reviewer";
 const review = express.Router();
 
 const newReviewerArray: Reviewer[] = [];
